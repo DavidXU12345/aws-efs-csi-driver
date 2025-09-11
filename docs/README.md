@@ -355,6 +355,8 @@ After deploying the driver, you can continue to these sections:
 | vol-metrics-fs-rate-limit   |        | 5       | true     | Volume metrics routines rate limiter per file system.                                                                                                                                                                                   |
 | max-inflight-mount-calls-opt-in                         |       | false        | true     | Opt in to use max inflight mount calls limit |
 | max-inflight-mount-calls                         |       | -1        | true     | New NodePublishVolume call will be blocked if maximum number of inflight calls is reached. If it is set to negative value, it will be calculated based on memory limit. If failing to fetch the memory limit, the check will be disabled (i.e. no limit). |
+| volume-attach-limit-opt-in                         |       | false        | true     | Opt in to use volume attach limit. |
+| volume-attach-limit                         |       | 0        | true     | Maximum number of volumes that can be attached to a node. If volumeAttachLimitOptIn is false or the value is set to zero, container orchestrator will decide how many volumes can be published to the node. If volumeAttachLimitOptIn is true and the value is not specified or set to a negative value, it will be calculated based on memory limit. |
 
 
 

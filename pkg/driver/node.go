@@ -339,9 +339,34 @@ func (d *Driver) NodeGetCapabilities(ctx context.Context, req *csi.NodeGetCapabi
 func (d *Driver) NodeGetInfo(ctx context.Context, req *csi.NodeGetInfoRequest) (*csi.NodeGetInfoResponse, error) {
 	klog.V(4).Infof("NodeGetInfo: called with args %+v", util.SanitizeRequest(*req))
 
+	maxVolumesPerNode := d.volumeAttachLimit
+	klog.V(4).Infof("NodeGetInfo: maxVolumesPerNode=%d", maxVolumesPerNode)
+	
 	return &csi.NodeGetInfoResponse{
 		NodeId: d.nodeID,
+		MaxVolumesPerNode: maxVolumesPerNode,
 	}, nil
+}
+
+func calculateVolumeAttachLimit(volumeAttachLimitOptIn bool, volumeAttachLimit int64) int64 {
+	if !volumeAttachLimitOptIn {
+		klog.V(4).Infof("calculateMaxVolumesPerNode: VolumeAttachLimitOptIn is false, returning zero as maxVolumesPerNode")
+		return 0
+	}
+
+	if volumeAttachLimit >= 0 {
+		klog.V(4).Infof("calculateMaxVolumesPerNode: VolumeAttachLimit manually set to %d, overriding the default value", volumeAttachLimit)
+		return volumeAttachLimit
+	}
+
+	memoryLimitsInBytes, err := getMemoryLimitInBytes()
+	if err != nil {
+		klog.Warningf("Failed to get memory limit in bytes: %v", err)
+		return 0
+	}
+	maxVolumePerNode := memoryLimitsInBytes / (memoryCostPerProxyProc * 1.5)
+	klog.V(4).Infof("calculateMaxVolumesPerNode: memoryLimitsInBytes=%d, maxVolumePerNode=%d", memoryLimitsInBytes, maxVolumePerNode)
+	return maxVolumePerNode
 }
 
 func (d *Driver) isValidVolumeCapabilities(volCaps []*csi.VolumeCapability) error {

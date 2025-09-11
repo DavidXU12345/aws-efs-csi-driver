@@ -926,6 +926,80 @@ func TestNodeGetVolumeStats(t *testing.T) {
 	os.RemoveAll(validPath)
 }
 
+func TestNodeGetInfo(t *testing.T) {
+	testCases := []struct {
+		name string
+		volumeAttachLimit int64
+		setupEnv func(t *testing.T)
+		expectedResponse *csi.NodeGetInfoResponse
+	}{
+		{
+			name: "positive volume attach limit",
+			volumeAttachLimit: 100,
+			expectedResponse: &csi.NodeGetInfoResponse{
+				NodeId: "test-node-id",
+				MaxVolumesPerNode: 100,
+			},
+		},
+		{
+			name: "zero volume attach limit",
+			volumeAttachLimit: 0,
+			expectedResponse: &csi.NodeGetInfoResponse{
+				NodeId: "test-node-id",
+				MaxVolumesPerNode: 0,
+			},
+		},
+		{
+			name: "negative volume attach limit uses memory limit to calculate",
+			volumeAttachLimit: -5,
+			setupEnv: func(t *testing.T) {
+				t.Setenv("CSI_NODE_MEMORY_LIMIT", "512Mi")
+			},
+			expectedResponse: &csi.NodeGetInfoResponse{
+				NodeId: "test-node-id",
+				MaxVolumesPerNode: 28, // 512Mi / (12Mi * 1.5) = 28
+			},
+		},
+		{
+			name: "negative volume attach limit uses memory limit to calculate but memory limit is not configured",
+			volumeAttachLimit: -5,
+			setupEnv: func(t *testing.T) {
+				t.Setenv("CSI_NODE_MEMORY_LIMIT", "")
+			},
+			expectedResponse: &csi.NodeGetInfoResponse{
+				NodeId: "test-node-id",
+				MaxVolumesPerNode: 0,
+			},
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			mockCtrl := gomock.NewController(t)
+			defer mockCtrl.Finish()
+			
+			if tc.setupEnv != nil {
+				tc.setupEnv(t)
+			}
+			
+			driver := &Driver{
+				nodeID: "test-node-id",
+				volumeAttachLimit: tc.volumeAttachLimit,
+			}
+			
+			req := &csi.NodeGetInfoRequest{}
+			ctx := context.Background()
+			
+			ret, err := driver.NodeGetInfo(ctx, req)
+			
+			testResult(t, "NodeGetInfo", ret, err, errtyp{})
+			if !reflect.DeepEqual(tc.expectedResponse, ret) {
+				t.Errorf("Expected: %v, Actual: %v", tc.expectedResponse, ret)
+			}
+		})
+	}
+}
+
 func testResponse(t *testing.T, expected, actual *csi.NodeGetVolumeStatsResponse) {
 	if !reflect.DeepEqual(expected, actual) {
 		t.Errorf("Expected: %v, Actual: %v", expected, actual)
@@ -1201,6 +1275,71 @@ func TestCalculateMaxInflightMountCalls(t *testing.T) {
 			t.Setenv("CSI_NODE_MEMORY_LIMIT", tc.memoryLimitConfig)
 
 			result := calculateMaxInflightMountCalls(tc.maxInflightMountCallsOptIn, tc.maxInflightMountCalls)
+
+			if result != tc.expResult {
+				t.Fatalf("Expected result %d, got %d", tc.expResult, result)
+			}
+		})
+	}
+}
+
+func TestCalculateVolumeAttachLimit(t *testing.T) {
+	testCases := []struct {
+		name                   string
+		volumeAttachLimitOptIn bool
+		volumeAttachLimit      int64
+		memoryLimitConfig      string
+		expResult              int64
+	}{
+		{
+			name: "feature disabled",
+			volumeAttachLimitOptIn: false,
+			volumeAttachLimit: 100,
+			memoryLimitConfig: "512Mi",
+			expResult: 0,
+		},
+		{
+			name: "manual override with positive value",
+			volumeAttachLimitOptIn: true,
+			volumeAttachLimit: 50,
+			memoryLimitConfig: "512Mi",
+			expResult: 50,
+		},
+		{
+			name: "manual override with zero",
+			volumeAttachLimitOptIn: true,
+			volumeAttachLimit: 0,
+			memoryLimitConfig: "512Mi",
+			expResult: 0,
+		},
+		{
+			name: "calculated from memory limit in Mi",
+			volumeAttachLimitOptIn: true,
+			volumeAttachLimit: -1,
+			memoryLimitConfig: "512Mi",
+			expResult: 28, // 512Mi / (12Mi * 1.5)
+		},
+		{
+			name: "calculated from memory limit in Gi",
+			volumeAttachLimitOptIn: true,
+			volumeAttachLimit: -1,
+			memoryLimitConfig: "1Gi",
+			expResult: 56, // 1Gi / (12Mi * 1.5)
+		},
+		{
+			name: "failure to get memory limit",
+			volumeAttachLimitOptIn: true,
+			volumeAttachLimit: -1,
+			memoryLimitConfig: "invalid",
+			expResult: 0,
+		},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			t.Setenv("CSI_NODE_MEMORY_LIMIT", tc.memoryLimitConfig)
+
+			result := calculateVolumeAttachLimit(tc.volumeAttachLimitOptIn, tc.volumeAttachLimit)
 
 			if result != tc.expResult {
 				t.Fatalf("Expected result %d, got %d", tc.expResult, result)

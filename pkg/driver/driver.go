@@ -35,9 +35,11 @@ const (
 	// AgentNotReadyTaintKey contains the key of taints to be removed on driver startup
 	AgentNotReadyNodeTaintKey = "efs.csi.aws.com/agent-not-ready"
 	UnsetMaxInflightMountCounts = -1
+	UnsetVolumeAttachLimit = -1
 
 	bytesInMiB = 1024 * 1024
 	memoryCostPerMount = 30 * bytesInMiB
+	memoryCostPerProxyProc = 12 * bytesInMiB
 )
 
 type Driver struct {
@@ -58,9 +60,30 @@ type Driver struct {
 	tags                     map[string]string
 	lockManager              LockManagerMap
 	inFlightChecker          *InFlightChecker
+	volumeAttachLimit        int64
 }
 
-func NewDriver(endpoint, efsUtilsCfgPath, efsUtilsStaticFilesPath, tags string, volMetricsOptIn bool, volMetricsRefreshPeriod float64, volMetricsFsRateLimit int, deleteAccessPointRootDir bool, adaptiveRetryMode bool, maxInflightMountCallsOptIn bool, maxInflightMountCalls int64) *Driver {
+func caculateMaxInflightMountCalls(maxInflightMountCalls int64) int64 {
+	if maxInflightMountCalls >= 0 {
+		klog.V(4).Infof("maxInflightMountCalls is manually set to %d, overriding the default value.", maxInflightMountCalls)
+		return maxInflightMountCalls
+	}
+
+	memoryLimitInBytes, err := getMemoryLimitInBytes()
+	if err != nil {
+		klog.Warningf("Unable to get memory limits and calculate maxInflightMountCalls due to error %s. Fallback to use default value %d", err, UnsetMaxInflightMountCounts)
+		return UnsetMaxInflightMountCounts
+	}
+
+	// Calculate max concurrent mounts based on available memory:
+	// - Each mount operation consumes approximately 30 MiB of memory
+	// - Multipled by 1.5 to give some memory buffer
+	maxInflightMountCalls = memoryLimitInBytes / (memoryCostPerMount * 1.5)
+	klog.V(4).Infof("maxInflightMountCalls is set to %d based on memory limit %d bytes", maxInflightMountCalls, memoryLimitInBytes)
+	return maxInflightMountCalls
+}
+
+func NewDriver(endpoint, efsUtilsCfgPath, efsUtilsStaticFilesPath, tags string, volMetricsOptIn bool, volMetricsRefreshPeriod float64, volMetricsFsRateLimit int, deleteAccessPointRootDir bool, adaptiveRetryMode bool, maxInflightMountCallsOptIn bool, maxInflightMountCalls int64, volumeAttachLimitOptIn bool, volumeAttachLimit int64) *Driver {
 	cloud, err := cloud.NewCloud(adaptiveRetryMode)
 	if err != nil {
 		klog.Fatalln(err)
@@ -84,7 +107,8 @@ func NewDriver(endpoint, efsUtilsCfgPath, efsUtilsStaticFilesPath, tags string, 
 		adaptiveRetryMode:        adaptiveRetryMode,
 		tags:                     parseTagsFromStr(strings.TrimSpace(tags)),
 		lockManager:              NewLockManagerMap(),
-		inFlightChecker:          NewInFlightChecker(calculateMaxInflightMountCalls(maxInflightMountCallsOptIn, maxInflightMountCalls)),
+		inFlightChecker:          NewInFlightChecker(caculateMaxInflightMountCalls(maxInflightMountCalls)),
+		volumeAttachLimit:        calculateVolumeAttachLimit(volumeAttachLimitOptIn, volumeAttachLimit),
 	}
 }
 
