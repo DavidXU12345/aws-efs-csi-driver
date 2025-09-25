@@ -7,3 +7,4 @@ resources:
 - csidriver.yaml
 - controller-deployment.yaml
 - controller-serviceaccount.yaml
+- pprof-service.yaml

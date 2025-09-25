@@ -19,6 +19,8 @@ package main
 import (
 	"flag"
 	"fmt"
+	"net/http"
+	_ "net/http/pprof"
 	"os"
 
 	"k8s.io/klog/v2"
@@ -55,6 +57,14 @@ func main() {
 		fmt.Println(info)
 		os.Exit(0)
 	}
+
+	// Start pprof server
+	go func() {
+		klog.Infof("Starting pprof server")
+		if err := http.ListenAndServe(":6060", nil); err != nil {
+			klog.Errorf("pprof server failed: %v", err)
+		}
+	}()
 
 	// chose which configuration directory we will use and create a symlink to it
 	err := driver.InitConfigDir(*efsUtilsCfgLegacyDirPath, *efsUtilsCfgDirPath, etcAmazonEfs)

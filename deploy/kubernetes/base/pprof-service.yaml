@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: efs-csi-pprof
+  labels:
+    app.kubernetes.io/name: aws-efs-csi-driver
+spec:
+  selector:
+    app: efs-csi-node
+  ports:
+  - port: 6060
+    targetPort: 6060
+    name: pprof
+  type: ClusterIP

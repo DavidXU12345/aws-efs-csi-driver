@@ -82,6 +82,9 @@ spec:
             - name: healthz
               containerPort: 9809
               protocol: TCP
+            - name: pprof
+              containerPort: 6060
+              protocol: TCP
           livenessProbe:
             httpGet:
               path: /healthz
