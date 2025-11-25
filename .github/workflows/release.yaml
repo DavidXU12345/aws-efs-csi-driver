@@ -16,7 +16,7 @@ jobs:
       startsWith(github.event.pull_request.title, '[POST-RELEASE')
     steps:
       - name: Checkout code
-        uses: actions/checkout@v1
+        uses: actions/checkout@v4
         
       - name: Extract version and create tag
         id: tag-version
