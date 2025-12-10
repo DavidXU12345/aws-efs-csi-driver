@@ -1,7 +1,7 @@
 name: Release
 on:
   workflow_dispatch:
-  pull_request:
+  pull_request_target:
     types: [closed]
 
 permissions:
@@ -12,6 +12,7 @@ jobs:
     # will only be triggered if PR title begins with [POST-RELEASE v*.*.*]
     name: Release
     runs-on: ubuntu-latest
+    permissions: write-all
     if: |
       github.event.pull_request.merged == true && 
       startsWith(github.event.pull_request.title, '[POST-RELEASE')
@@ -33,24 +34,15 @@ jobs:
           echo "Extracted VERSION: $VERSION"
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           
-      - name: Create and push tag
-        uses: rickstaa/action-create-tag@v1
-        with:
-          tag: ${{ steps.extract-version.outputs.version }}
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          
       - name: Create Release
-        id: create-release
-        uses: actions/create-release@v1
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          tag_name: ${{ steps.extract-version.outputs.version }}
-          release_name: ${{ steps.extract-version.outputs.version }}
-          body: |
-            AWS EFS CSI Driver
-
-            ## CHANGELOG
-            See [CHANGELOG](https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/CHANGELOG-2.x.md) for full list of changes
-          draft: false
-          prerelease: false
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          tag="${{ steps.extract-version.outputs.version }}"
+          
+          gh release create "$tag" --title "$tag" --notes - <<EOF
+          AWS EFS CSI Driver
+          
+          ## CHANGELOG
+          See [CHANGELOG](https://github.com/kubernetes-sigs/aws-efs-csi-driver/blob/master/CHANGELOG-2.x.md) for full list of changes
+          EOF
