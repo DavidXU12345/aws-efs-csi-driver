@@ -5,7 +5,7 @@ on:
     types: [closed]
 
 permissions:
-  contents: write # Create releases
+  contents: read # Create releases
 
 jobs:
   release:
