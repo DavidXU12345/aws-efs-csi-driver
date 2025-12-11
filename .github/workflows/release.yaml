@@ -24,6 +24,7 @@ jobs:
         id: extract-version
         run: |
           echo "testing..."
+          echo "testing again..."
           PR_TITLE="${{ github.event.pull_request.title }}"
           VERSION=$(echo "$PR_TITLE" | grep -oE '^\[POST-RELEASE v[0-9]+\.[0-9]+\.[0-9]+\]' | grep -oE 'v[0-9]+\.[0-9]+\.[0-9]+')
           
