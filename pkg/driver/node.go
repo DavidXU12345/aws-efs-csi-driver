@@ -45,7 +45,7 @@ var (
 		csi.VolumeCapability_AccessMode_MULTI_NODE_MULTI_WRITER,
 	}
 	volumeIdCounter  = make(map[string]int)
-	supportedFSTypes = []string{"efs", ""}
+	supportedFSTypes = []string{util.FileSystemTypeEFS.String(), util.FileSystemTypeS3Files.String(), ""}
 	hexSuffixRegex   = regexp.MustCompile(`^[0-9a-f]{8,40}$`)
 )
 
@@ -79,7 +79,8 @@ func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolu
 		return nil, status.Error(codes.InvalidArgument, fmt.Sprintf("Volume capability not supported: %s", err))
 	}
 
-	if volCap.GetMount() == nil {
+	mountVolume := volCap.GetMount()
+	if mountVolume == nil {
 		return nil, status.Error(codes.InvalidArgument, "Volume capability access type must be mount")
 	}
 
@@ -130,7 +131,7 @@ func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolu
 		}
 	}
 
-	fsid, vpath, apid, err := parseVolumeId(req.GetVolumeId())
+	fsid, vpath, apid, fsType, err := parseVolumeId(req.GetVolumeId())
 	if err != nil {
 		// parseVolumeId returns the appropriate error
 		return nil, err
@@ -157,10 +158,23 @@ func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolu
 		if !hasOption(mountOptions, "tls") {
 			mountOptions = append(mountOptions, "tls")
 		}
+	} else {
+		if fsType == util.FileSystemTypeS3Files {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"Encryption in transit cannot be disabled for S3 Files file system. "+
+					"Remove 'encryptInTransit: false' from your volume configuration or omit "+
+					"the encryptInTransit parameter (encryption is enabled by default).")
+		}
 	}
 
 	if crossAccountDNSEnabled {
-		mountOptions = append(mountOptions, CrossAccount)
+		if fsType == util.FileSystemTypeS3Files {
+			return nil, status.Errorf(codes.InvalidArgument,
+				"Cross-account mounting is not supported for S3 Files file system. "+
+					"Remove 'crossaccount: true' from your volume configuration.")
+		} else {
+			mountOptions = append(mountOptions, CrossAccount)
+		}
 	}
 
 	if req.GetReadonly() {
@@ -205,18 +219,24 @@ func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolu
 				continue
 			}
 
+			if f == "stunnel" && fsType == util.FileSystemTypeS3Files {
+				return nil, status.Errorf(codes.InvalidArgument,
+					"stunnel mount option is not supported by S3 Files file system.")
+			}
+
 			if !hasOption(mountOptions, f) {
 				mountOptions = append(mountOptions, f)
 			}
 		}
 	}
+
 	klog.V(5).Infof("NodePublishVolume: creating dir %s", target)
 	if err := d.mounter.MakeDir(target); err != nil {
 		return nil, status.Errorf(codes.Internal, "Could not create dir %q: %v", target, err)
 	}
 
 	klog.V(5).Infof("NodePublishVolume: mounting %s at %s with options %v", source, target, mountOptions)
-	if err := d.mounter.Mount(source, target, "efs", mountOptions); err != nil {
+	if err := d.mounter.Mount(source, target, fsType.String(), mountOptions); err != nil {
 		os.Remove(target)
 		return nil, status.Errorf(codes.Internal, "Could not mount %q at %q: %v", source, target, err)
 	}
@@ -429,45 +449,93 @@ func (d *Driver) validateFStype(volCaps []*csi.VolumeCapability) error {
 	return nil
 }
 
-// parseVolumeId accepts a NodePublishVolumeRequest.VolumeId as a colon-delimited string of the
-// form `{fileSystemID}:{mountPath}:{accessPointID}`.
-//   - The `{fileSystemID}` is required, and expected to be of the form `fs-...`.
-//   - The other two fields are optional -- they may be empty or omitted entirely. For example,
-//     `fs-abcd1234::`, `fs-abcd1234:`, and `fs-abcd1234` are equivalent.
-//   - The `{mountPath}`, if specified, is not required to be absolute.
-//   - The `{accessPointID}` is expected to be of the form `fsap-...`.
+// parseVolumeId accepts a NodePublishVolumeRequest.VolumeId as a colon-delimited string in one of two formats:
 //
-// parseVolumeId returns the parsed values, of which `subpath` and `apid` may be empty; and an
-// error, which will be a `status.Error` with `codes.InvalidArgument`, or `nil` if the `volumeId`
-// was parsed successfully.
+// NEW FORMAT: `{fsType}:{fileSystemID}:{mountPath}:{accessPointID}`
+//   - The `{fsType}` indicates the filesystem type ("efs" or "s3files")
+//   - Examples: `efs:fs-abcd1234:::`, `s3files:fs-abcd1234::`, `efs:fs-abcd1234`, `s3files:fs-abcd1234:/path:fsap-xyz123`
+//
+// OLD FORMAT (backward compatibility): `{fileSystemID}:{mountPath}:{accessPointID}`
+//   - Same as the new format, treated as EFS filesystem type
+//   - Examples: `fs-abcd1234::`, `fs-abcd1234:`, `fs-abcd1234`, `fs-abcd1234:/path:fsap-xyz123`
+//
+// COMMON RULES:
+//   - The `{fileSystemID}` is required, and expected to be of the form `fs-...`
+//   - The `{mountPath}` and `{accessPointID}` are optional -- they may be empty or omitted entirely
+//   - The `{mountPath}`, if specified, is not required to be absolute
+//   - The `{accessPointID}` is expected to be of the form `fsap-...`
+//
+// parseVolumeId returns the filesystem type, parsed values (where `subpath` and `apid` may be empty),
+// and an error. The error will be a `status.Error` with `codes.InvalidArgument`, or `nil` if the
+// `volumeId` was parsed successfully. For old format volume IDs, `fsType` will be set to EFS.
+//
 // See the following issues for some background:
 // - https://github.com/kubernetes-sigs/aws-efs-csi-driver/issues/100
 // - https://github.com/kubernetes-sigs/aws-efs-csi-driver/issues/167
-func parseVolumeId(volumeId string) (fsid, subpath, apid string, err error) {
+func parseVolumeId(volumeId string) (fsid, subpath, apid string, fsType util.FileSystemType, err error) {
 	tokens := strings.Split(volumeId, ":")
-	if len(tokens) > 3 {
-		err = status.Errorf(codes.InvalidArgument, "volume ID '%s' is invalid: Expected at most three fields separated by ':'", volumeId)
-		return
-	}
 
-	// Validate the filesystem ID (first token)
-	fsid = tokens[0]
-	if !isValidFileSystemId(fsid) {
-		err = status.Errorf(codes.InvalidArgument, "volume ID '%s' is invalid: Expected a file system ID of the form 'fs-[0-9a-f]{8,40}'", volumeId)
-		return
-	}
+	// Try to parse first token as filesystem type to determine format
+	parsedFsType, parseErr := util.ParseFileSystemType(tokens[0])
 
-	// Do we have a subpath?
-	if len(tokens) >= 2 && tokens[1] != "" {
-		subpath = path.Clean(tokens[1])
-	}
-
-	// Do we have an access point ID?
-	if len(tokens) == 3 && tokens[2] != "" {
-		apid = tokens[2]
-		if !isValidAccessPointId(apid) {
-			err = status.Errorf(codes.InvalidArgument, "volume ID '%s' has an invalid access point ID '%s': Expected it to be of the form 'fsap-[0-9a-f]{8,40}'", volumeId, apid)
+	if parseErr == nil { // New format: fsType:fileSystemID:mountPath:accessPointID
+		fsType = parsedFsType
+		if len(tokens) > 4 {
+			err = status.Errorf(codes.InvalidArgument, "volume ID '%s' is invalid: Expected at most four fields separated by ':'", volumeId)
 			return
+		}
+		if len(tokens) < 2 {
+			err = status.Errorf(codes.InvalidArgument, "volume ID '%s' is invalid: Missing file system ID", volumeId)
+			return
+		}
+
+		// Validate and extract fsid
+		fsid = tokens[1]
+		if !isValidFileSystemId(fsid) {
+			err = status.Errorf(codes.InvalidArgument, "volume ID '%s' is invalid: Expected a file system ID of the form 'fs-[0-9a-f]{8,40}'", volumeId)
+			return
+		}
+
+		// Extract subpath if present
+		if len(tokens) >= 3 && tokens[2] != "" {
+			subpath = path.Clean(tokens[2])
+		}
+
+		// Extract apid if present
+		if len(tokens) == 4 && tokens[3] != "" {
+			apid = tokens[3]
+			if !isValidAccessPointId(apid) {
+				err = status.Errorf(codes.InvalidArgument, "volume ID '%s' has an invalid access point ID '%s': Expected it to be of the form 'fsap-[0-9a-f]{8,40}'", volumeId, apid)
+				return
+			}
+		}
+	} else { // Old format (before S3 Files support was added): fileSystemID:mountPath:accessPointID
+		fsType = util.FileSystemTypeEFS
+
+		if len(tokens) > 3 {
+			err = status.Errorf(codes.InvalidArgument, "volume ID '%s' is invalid: Expected at most three fields separated by ':'", volumeId)
+			return
+		}
+
+		// Extract fsid
+		fsid = tokens[0]
+		if !isValidFileSystemId(fsid) {
+			err = status.Errorf(codes.InvalidArgument, "volume ID '%s' is invalid: Expected a file system ID of the form 'fs-[0-9a-f]{8,40}'", volumeId)
+			return
+		}
+
+		// Extract subpath if present
+		if len(tokens) >= 2 && tokens[1] != "" {
+			subpath = path.Clean(tokens[1])
+		}
+
+		// Extract apid if present
+		if len(tokens) == 3 && tokens[2] != "" {
+			apid = tokens[2]
+			if !isValidAccessPointId(apid) {
+				err = status.Errorf(codes.InvalidArgument, "volume ID '%s' has an invalid access point ID '%s': Expected it to be of the form 'fsap-[0-9a-f]{8,40}'", volumeId, apid)
+				return
+			}
 		}
 	}
 
@@ -485,12 +553,10 @@ func hasOption(options []string, opt string) bool {
 }
 
 func isValidFileSystemId(filesystemId string) bool {
-	// fs-[0-9a-f]{8,40} https://docs.aws.amazon.com/efs/latest/ug/API_CreateAccessPoint.html#efs-CreateAccessPoint-request-FileSystemId
 	return strings.HasPrefix(filesystemId, "fs-") && hexSuffixRegex.MatchString(filesystemId[3:])
 }
 
 func isValidAccessPointId(accesspointId string) bool {
-	// fsap-[0-9a-f]{8,40} (https://docs.aws.amazon.com/efs/latest/ug/API_CreateAccessPoint.html#efs-CreateAccessPoint-response-AccessPointId)
 	return strings.HasPrefix(accesspointId, "fsap-") && hexSuffixRegex.MatchString(accesspointId[5:])
 }
 

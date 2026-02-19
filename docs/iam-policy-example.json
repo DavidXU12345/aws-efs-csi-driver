@@ -4,9 +4,11 @@
     {
       "Effect": "Allow",
       "Action": [
-        "elasticfilesystem:DescribeAccessPoints",
-        "elasticfilesystem:DescribeFileSystems",
-        "elasticfilesystem:DescribeMountTargets",
+        "elasticfilesystem:ListAccessPoints",
+        "elasticfilesystem:ListFileSystems",
+        "s3files:DescribeAccessPoints",
+        "s3files:DescribeFileSystems",
+        "s3files:DescribeMountTargets",
         "ec2:DescribeAvailabilityZones"
       ],
       "Resource": "*"
@@ -14,7 +16,8 @@
     {
       "Effect": "Allow",
       "Action": [
-        "elasticfilesystem:CreateAccessPoint"
+        "elasticfilesystem:CreateAccessPoint",
+        "s3files:CreateAccessPoint"
       ],
       "Resource": "*",
       "Condition": {
@@ -26,7 +29,8 @@
     {
       "Effect": "Allow",
       "Action": [
-        "elasticfilesystem:TagResource"
+        "elasticfilesystem:TagResource",
+        "s3files:TagResource"
       ],
       "Resource": "*",
       "Condition": {
@@ -37,7 +41,10 @@
     },
     {
       "Effect": "Allow",
-      "Action": "elasticfilesystem:DeleteAccessPoint",
+      "Action": [
+        "elasticfilesystem:DeleteAccessPoint",
+        "s3files:DeleteAccessPoint"
+      ],
       "Resource": "*",
       "Condition": {
         "StringEquals": {

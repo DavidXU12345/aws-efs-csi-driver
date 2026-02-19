@@ -4,16 +4,19 @@
 
 
 ## Overview
-The [Amazon Elastic File System](https://aws.amazon.com/efs/) Container Storage Interface (CSI) Driver implements the [CSI](https://github.com/container-storage-interface/spec/blob/master/spec.md) specification for container orchestrators to manage the lifecycle of Amazon EFS file systems.
+The Amazon EFS Container Storage Interface (CSI) Driver implements the [CSI](https://github.com/container-storage-interface/spec/blob/master/spec.md) specification for container orchestrators to manage the lifecycle of [Amazon Elastic File System](https://aws.amazon.com/efs/) file systems and [Amazon S3 Files](https://aws.amazon.com/s3files/) file systems.
 
 > **Note:** The latest release version may not include the most recent code changes in master branch. Please check the [changelog](../CHANGELOG-2.x.md) for updates included in the corresponding release versions.
 
 ## Features
-* Static provisioning - Amazon EFS file system needs to be created manually first, then it could be mounted inside container as a persistent volume (PV) using the driver.
-* Dynamic provisioning - Uses a persistent volume claim (PVC) to dynamically provision a persistent volume (PV). On Creating a PVC, Kubernetes requests Amazon EFS to create an Access Point in a file system which will be used to mount the PV.
+Amazon EFS CSI driver supports dynamic provisioning and static provisioning.
+Currently, Dynamic Provisioning creates an access point for each PV. This mean an Amazon EFS or Amazon S3 Files file system has to be created manually on AWS first and should be provided as an input to the storage class parameter.
+For static provisioning, the Amazon EFS or Amazon S3 Files file system needs to be created manually on AWS first. After that, it can be mounted inside a container as a volume using the driver.
+* Static provisioning - Amazon EFS file system or Amazon S3 Files file system needs to be created manually first, then it could be mounted inside container as a persistent volume (PV) using the driver.
+* Dynamic provisioning - Uses a persistent volume claim (PVC) to dynamically provision a persistent volume (PV). On Creating a PVC, kuberenetes requests Amazon EFS or Amazon S3 Files to create an Access Point in a file system which will be used to mount the PV.
 * Mount Options - Mount options can be specified in the persistent volume (PV) or storage class for dynamic provisioning to define how the volume should be mounted.
 * Encryption of data in transit - Amazon EFS file systems are mounted with encryption in transit enabled by default in the master branch version of the driver.
-* Cross account mount - Amazon EFS file systems from different aws accounts can be mounted from an Amazon EKS cluster.
+* Cross account mount (Amazon EFS only) - Amazon EFS file systems from different aws accounts can be mounted from an Amazon EKS cluster.
 * Multiarch - Amazon EFS CSI driver image is now multiarch on ECR
 
 Currently, Dynamic Provisioning creates an access point for each PV. This mean an Amazon EFS file system has to be created manually on AWS first and should be provided as an input to the storage class parameter.
@@ -25,7 +28,7 @@ The following CSI interfaces are implemented:
 * Identity Service: GetPluginInfo, GetPluginCapabilities, Probe
 
 **Note**  
-Since Amazon EFS is an elastic file system, it doesn't really enforce any file system capacity. The actual storage capacity value in persistent volume and persistent volume claim is not used when creating the file system. However, since the storage capacity is a required field by Kubernetes, you must specify the value and you can use any valid value for the capacity.
+Since Amazon EFS and Amazon S3 Files can scale elastically, it doesn't really enforce any file system capacity. The actual storage capacity value in persistent volume and persistent volume claim is not used when creating the file system. However, since the storage capacity is a required field by Kubernetes, you must specify the value and you can use any valid value for the capacity.
 
 For detailed parameter explanations, see the [parameters documentation](parameters.md).
 

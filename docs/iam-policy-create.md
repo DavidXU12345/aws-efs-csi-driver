@@ -1,8 +1,8 @@
 ## Create an IAM policy and role for Amazon EKS
 
-The following steps give an example of using an IAM role for service account to talk to Amazon EFS.
+The following steps give an example of using an IAM role for service account to talk to Amazon EFS and Amazon S3 Files.
 
-1. Create an IAM policy that allows the CSI driver's service account to make calls to AWS APIs on your behalf.
+1. Create an IAM policy that allows the CSI driver's service account to make calls to AWS APIs on your behalf. The policy includes permissions for both Amazon EFS and Amazon S3 Files operations.
 
    1. Download the IAM policy document.
 
