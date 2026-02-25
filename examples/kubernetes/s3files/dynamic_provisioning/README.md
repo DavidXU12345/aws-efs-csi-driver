@@ -139,7 +139,7 @@ If a Pod doesn't have an IP address listed, make sure that you added a mount tar
 1. Confirm that the data is written to the volume.
 
    ```sh
-   kubectl exec s3files-app -- bash -c "cat data/out"
+   kubectl exec s3files-app -- bash -c "cat data/out.txt"
    ```
 
    The example output is as follows.
