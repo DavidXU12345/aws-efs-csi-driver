@@ -4178,7 +4178,7 @@ func TestDeleteVolume(t *testing.T) {
 				mockMounter.EXPECT().Unmount(gomock.Any()).Return(nil)
 				mockMounter.EXPECT().Stat(gomock.Any()).Return(dirPresent, nil)
 				mockMounter.EXPECT().IsLikelyNotMountPoint(gomock.Any()).Return(true, nil)
-				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(util.FileSystemTypeEFS)).Return(accessPoint, nil)
+				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(fsId), gomock.Eq(util.FileSystemTypeEFS)).Return(accessPoint, nil)
 				mockCloud.EXPECT().DeleteAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(util.FileSystemTypeEFS)).Return(nil)
 				_, err := driver.DeleteVolume(ctx, req)
 				if err != nil {
@@ -4236,8 +4236,8 @@ func TestDeleteVolume(t *testing.T) {
 
 				// Expect the first describe call to see the access point, then subsequent calls to see it as deleted
 				var describeCallCount int32 = 0
-				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(util.FileSystemTypeEFS)).
-					DoAndReturn(func(ctx, accessPointId, fsType interface{}) (*cloud.AccessPoint, error) {
+				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(fsId), gomock.Eq(util.FileSystemTypeEFS)).
+					DoAndReturn(func(ctx, accessPointId, fileSystemId, fsType interface{}) (*cloud.AccessPoint, error) {
 						current := atomic.AddInt32(&describeCallCount, 1)
 						if current == 1 {
 							return accessPoint, nil
@@ -4352,8 +4352,8 @@ func TestDeleteVolume(t *testing.T) {
 
 				// Expect the first describe call to see the access point, then subsequent calls to see it as deleted
 				describeCallCountAp1 := 0
-				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(util.FileSystemTypeEFS)).
-					DoAndReturn(func(ctx, accessPointId, fsType interface{}) (*cloud.AccessPoint, error) {
+				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(fsId), gomock.Eq(util.FileSystemTypeEFS)).
+					DoAndReturn(func(ctx, accessPointId, fileSystemId, fsType interface{}) (*cloud.AccessPoint, error) {
 						describeCallCountAp1++
 						if describeCallCountAp1 == 1 {
 							return accessPoint1, nil
@@ -4362,8 +4362,8 @@ func TestDeleteVolume(t *testing.T) {
 					}).Times(numGoRoutines)
 
 				describeCallCountAp2 := 0
-				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId2), gomock.Eq(util.FileSystemTypeEFS)).
-					DoAndReturn(func(ctx, accessPointId, fsType interface{}) (*cloud.AccessPoint, error) {
+				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId2), gomock.Eq(fsId), gomock.Eq(util.FileSystemTypeEFS)).
+					DoAndReturn(func(ctx, accessPointId, fileSystemId, fsType interface{}) (*cloud.AccessPoint, error) {
 						describeCallCountAp2++
 						if describeCallCountAp2 == 1 {
 							return accessPoint2, nil
@@ -4516,7 +4516,7 @@ func TestDeleteVolume(t *testing.T) {
 
 				ctx := context.Background()
 				mockMounter.EXPECT().IsLikelyNotMountPoint(gomock.Any()).Return(true, nil)
-				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(util.FileSystemTypeEFS)).Return(nil, cloud.ErrNotFound)
+				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(fsId), gomock.Eq(util.FileSystemTypeEFS)).Return(nil, cloud.ErrNotFound)
 				_, err := driver.DeleteVolume(ctx, req)
 				if err != nil {
 					t.Fatalf("Delete Volume failed: %v", err)
@@ -4546,7 +4546,7 @@ func TestDeleteVolume(t *testing.T) {
 
 				ctx := context.Background()
 				mockMounter.EXPECT().IsLikelyNotMountPoint(gomock.Any()).Return(true, nil)
-				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(util.FileSystemTypeEFS)).Return(nil, cloud.ErrAccessDenied)
+				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(fsId), gomock.Eq(util.FileSystemTypeEFS)).Return(nil, cloud.ErrAccessDenied)
 				_, err := driver.DeleteVolume(ctx, req)
 				if err == nil {
 					t.Fatalf("DeleteVolume did not fail")
@@ -4576,7 +4576,7 @@ func TestDeleteVolume(t *testing.T) {
 
 				ctx := context.Background()
 				mockMounter.EXPECT().IsLikelyNotMountPoint(gomock.Any()).Return(true, nil)
-				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(util.FileSystemTypeEFS)).Return(nil, errors.New("Describe Access Point failed"))
+				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(fsId), gomock.Eq(util.FileSystemTypeEFS)).Return(nil, errors.New("Describe Access Point failed"))
 				_, err := driver.DeleteVolume(ctx, req)
 				if err == nil {
 					t.Fatalf("DeleteVolume did not fail")
@@ -4614,7 +4614,7 @@ func TestDeleteVolume(t *testing.T) {
 				ctx := context.Background()
 				mockMounter.EXPECT().MakeDir(gomock.Any()).Return(errors.New("Failed to makeDir"))
 				mockMounter.EXPECT().IsLikelyNotMountPoint(gomock.Any()).Return(true, nil)
-				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(util.FileSystemTypeEFS)).Return(accessPoint, nil)
+				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(fsId), gomock.Eq(util.FileSystemTypeEFS)).Return(accessPoint, nil)
 				_, err := driver.DeleteVolume(ctx, req)
 				if err == nil {
 					t.Fatal("DeleteVolume did not fail")
@@ -4653,7 +4653,7 @@ func TestDeleteVolume(t *testing.T) {
 				mockMounter.EXPECT().MakeDir(gomock.Any()).Return(nil)
 				mockMounter.EXPECT().Mount(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(errors.New("Failed to mount"))
 				mockMounter.EXPECT().IsLikelyNotMountPoint(gomock.Any()).Return(true, nil).Times(2)
-				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(util.FileSystemTypeEFS)).Return(accessPoint, nil)
+				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(fsId), gomock.Eq(util.FileSystemTypeEFS)).Return(accessPoint, nil)
 				_, err := driver.DeleteVolume(ctx, req)
 				if err == nil {
 					t.Fatal("DeleteVolume did not fail")
@@ -4703,7 +4703,7 @@ func TestDeleteVolume(t *testing.T) {
 				mockMounter.EXPECT().Unmount(gomock.Any()).Return(errors.New("Failed to unmount"))
 				mockMounter.EXPECT().Stat(gomock.Any()).Return(dirPresent, nil).Times(1)
 				mockMounter.EXPECT().IsLikelyNotMountPoint(gomock.Any()).Return(true, nil).Times(2)
-				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(util.FileSystemTypeEFS)).Return(accessPoint, nil)
+				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(fsId), gomock.Eq(util.FileSystemTypeEFS)).Return(accessPoint, nil)
 				_, err := driver.DeleteVolume(ctx, req)
 				if err == nil {
 					t.Fatal("DeleteVolume did not fail")
@@ -4942,7 +4942,7 @@ func TestCreateDeleteVolumeRace(t *testing.T) {
 				)
 
 				// Expected create function calls
-				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(util.FileSystemTypeEFS)).Return(accessPoint, nil)
+				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(fsId), gomock.Eq(util.FileSystemTypeEFS)).Return(accessPoint, nil)
 				mockCloud.EXPECT().FindAccessPointByClientToken(gomock.Eq(ctx), gomock.Any(), gomock.Eq(fsId), gomock.Eq(util.FileSystemTypeEFS)).Return(accessPoint, nil)
 
 				// Expected delete function calls
@@ -5095,7 +5095,7 @@ func TestCreateDeleteVolumeRace(t *testing.T) {
 				)
 
 				// Expected create function calls
-				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(util.FileSystemTypeEFS)).Return(accessPoint, nil)
+				mockCloud.EXPECT().DescribeAccessPoint(gomock.Eq(ctx), gomock.Eq(apId), gomock.Eq(fsId), gomock.Eq(util.FileSystemTypeEFS)).Return(accessPoint, nil)
 				mockCloud.EXPECT().FindAccessPointByClientToken(gomock.Eq(ctx), gomock.Any(), gomock.Eq(fsId), gomock.Eq(util.FileSystemTypeEFS)).Return(accessPoint, nil)
 
 				// Expected delete function calls

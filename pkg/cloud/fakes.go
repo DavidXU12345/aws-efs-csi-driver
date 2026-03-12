@@ -60,7 +60,7 @@ func (c *FakeCloudProvider) DeleteAccessPoint(ctx context.Context, accessPointId
 	return nil
 }
 
-func (c *FakeCloudProvider) DescribeAccessPoint(ctx context.Context, accessPointId string, fsType util.FileSystemType) (accessPoint *AccessPoint, err error) {
+func (c *FakeCloudProvider) DescribeAccessPoint(ctx context.Context, accessPointId string, fileSystemId string, fsType util.FileSystemType) (accessPoint *AccessPoint, err error) {
 	for _, ap := range c.accessPoints {
 		if ap.AccessPointId == accessPointId {
 			return ap, nil

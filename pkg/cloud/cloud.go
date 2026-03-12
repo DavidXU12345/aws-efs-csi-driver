@@ -116,7 +116,7 @@ type Cloud interface {
 	GetMetadata() MetadataService
 	CreateAccessPoint(ctx context.Context, clientToken string, accessPointOpts *AccessPointOptions, fsType util.FileSystemType) (accessPoint *AccessPoint, err error)
 	DeleteAccessPoint(ctx context.Context, accessPointId string, fsType util.FileSystemType) (err error)
-	DescribeAccessPoint(ctx context.Context, accessPointId string, fsType util.FileSystemType) (accessPoint *AccessPoint, err error)
+	DescribeAccessPoint(ctx context.Context, accessPointId string, fileSystemId string, fsType util.FileSystemType) (accessPoint *AccessPoint, err error)
 	FindAccessPointByClientToken(ctx context.Context, clientToken, fileSystemId string, fsType util.FileSystemType) (accessPoint *AccessPoint, err error)
 	ListAccessPoints(ctx context.Context, fileSystemId string, fsType util.FileSystemType) (accessPoints []*AccessPoint, err error)
 	DescribeFileSystem(ctx context.Context, fileSystemId string, fsType util.FileSystemType) (fs *FileSystem, err error)
@@ -330,7 +330,7 @@ func (c *cloud) DeleteAccessPoint(ctx context.Context, accessPointId string, fsT
 	}
 }
 
-func (c *cloud) DescribeAccessPoint(ctx context.Context, accessPointId string, fsType util.FileSystemType) (accessPoint *AccessPoint, err error) {
+func (c *cloud) DescribeAccessPoint(ctx context.Context, accessPointId string, fileSystemId string, fsType util.FileSystemType) (accessPoint *AccessPoint, err error) {
 	switch fsType {
 	case util.FileSystemTypeEFS:
 		describeAPInput := &efs.DescribeAccessPointsInput{
@@ -364,7 +364,8 @@ func (c *cloud) DescribeAccessPoint(ctx context.Context, accessPointId string, f
 		var nextToken *string
 		for {
 			describeAPInput := &s3files.ListAccessPointsInput{
-				NextToken: nextToken,
+				NextToken:    nextToken,
+				FileSystemId: &fileSystemId,
 			}
 
 			res, err := c.s3files.ListAccessPoints(ctx, describeAPInput, func(o *s3files.Options) {

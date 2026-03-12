@@ -542,7 +542,7 @@ func (d *Driver) DeleteVolume(ctx context.Context, req *csi.DeleteVolumeRequest)
 
 		// Check if Access point exists.
 		// If access point exists, retrieve its root directory and delete it/
-		accessPoint, err := localCloud.DescribeAccessPoint(ctx, accessPointId, fsType)
+		accessPoint, err := localCloud.DescribeAccessPoint(ctx, accessPointId, fileSystemId, fsType)
 		if err != nil {
 			if err == cloud.ErrAccessDenied {
 				return nil, status.Errorf(codes.Unauthenticated, "Access Denied. Please ensure you have the right AWS permissions: %v", err)

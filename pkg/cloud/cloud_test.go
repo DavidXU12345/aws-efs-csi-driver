@@ -324,7 +324,7 @@ func TestDescribeAccessPoint(t *testing.T) {
 				}
 				ctx := context.Background()
 				mockEfs.EXPECT().DescribeAccessPoints(gomock.Eq(ctx), gomock.Any(), gomock.Any()).Return(output, nil)
-				res, err := c.DescribeAccessPoint(ctx, accessPointId, util.FileSystemTypeEFS)
+				res, err := c.DescribeAccessPoint(ctx, accessPointId, fsId, util.FileSystemTypeEFS)
 				if err != nil {
 					t.Fatalf("Describe Access Point failed: %v", err)
 				}
@@ -370,7 +370,7 @@ func TestDescribeAccessPoint(t *testing.T) {
 				}
 				ctx := context.Background()
 				mockEfs.EXPECT().DescribeAccessPoints(gomock.Eq(ctx), gomock.Any(), gomock.Any()).Return(output, nil)
-				res, err := c.DescribeAccessPoint(ctx, accessPointId, util.FileSystemTypeEFS)
+				res, err := c.DescribeAccessPoint(ctx, accessPointId, fsId, util.FileSystemTypeEFS)
 				if err != nil {
 					t.Fatalf("Describe Access Point failed: %v", err)
 				}
@@ -400,7 +400,7 @@ func TestDescribeAccessPoint(t *testing.T) {
 				}
 				ctx := context.Background()
 				mockEfs.EXPECT().DescribeAccessPoints(gomock.Eq(ctx), gomock.Any(), gomock.Any()).Return(output, nil)
-				_, err := c.DescribeAccessPoint(ctx, accessPointId, util.FileSystemTypeEFS)
+				_, err := c.DescribeAccessPoint(ctx, accessPointId, fsId, util.FileSystemTypeEFS)
 				if err == nil {
 					t.Fatalf("DescribeAccessPoint did not fail")
 				}
@@ -457,7 +457,7 @@ func TestDescribeAccessPoint(t *testing.T) {
 				}
 				ctx := context.Background()
 				mockEfs.EXPECT().DescribeAccessPoints(gomock.Eq(ctx), gomock.Any(), gomock.Any()).Return(output, nil)
-				_, err := c.DescribeAccessPoint(ctx, accessPointId, util.FileSystemTypeEFS)
+				_, err := c.DescribeAccessPoint(ctx, accessPointId, fsId, util.FileSystemTypeEFS)
 				if err == nil {
 					t.Fatalf("DescribeAccessPoint did not fail")
 				}
@@ -474,7 +474,7 @@ func TestDescribeAccessPoint(t *testing.T) {
 					&types.AccessPointNotFound{
 						Message: aws.String("Access Point not found"),
 					})
-				_, err := c.DescribeAccessPoint(ctx, accessPointId, util.FileSystemTypeEFS)
+				_, err := c.DescribeAccessPoint(ctx, accessPointId, fsId, util.FileSystemTypeEFS)
 				if err == nil {
 					t.Fatalf("DescribeAccessPoint did not fail")
 				}
@@ -495,7 +495,7 @@ func TestDescribeAccessPoint(t *testing.T) {
 						Code:    AccessDeniedException,
 						Message: "Access Denied",
 					})
-				_, err := c.DescribeAccessPoint(ctx, accessPointId, util.FileSystemTypeEFS)
+				_, err := c.DescribeAccessPoint(ctx, accessPointId, fsId, util.FileSystemTypeEFS)
 				if err == nil {
 					t.Fatalf("DescribeAccessPoint did not fail")
 				}
@@ -512,7 +512,7 @@ func TestDescribeAccessPoint(t *testing.T) {
 
 				ctx := context.Background()
 				mockEfs.EXPECT().DescribeAccessPoints(gomock.Eq(ctx), gomock.Any(), gomock.Any()).Return(nil, errors.New("DescribeAccessPoint failed"))
-				_, err := c.DescribeAccessPoint(ctx, accessPointId, util.FileSystemTypeEFS)
+				_, err := c.DescribeAccessPoint(ctx, accessPointId, fsId, util.FileSystemTypeEFS)
 				if err == nil {
 					t.Fatalf("DescribeAccessPoint did not fail")
 				}
@@ -1302,7 +1302,7 @@ func TestDescribeAccessPointS3Files(t *testing.T) {
 				}
 				ctx := context.Background()
 				mockS3Files.EXPECT().ListAccessPoints(gomock.Eq(ctx), gomock.Any(), gomock.Any()).Return(output, nil)
-				res, err := c.DescribeAccessPoint(ctx, accessPointId, util.FileSystemTypeS3Files)
+				res, err := c.DescribeAccessPoint(ctx, accessPointId, fileSystemId, util.FileSystemTypeS3Files)
 				if err != nil {
 					t.Fatalf("Describe Access Point failed: %v", err)
 				}
@@ -1332,7 +1332,7 @@ func TestDescribeAccessPointS3Files(t *testing.T) {
 				}
 				ctx := context.Background()
 				mockS3Files.EXPECT().ListAccessPoints(gomock.Eq(ctx), gomock.Any(), gomock.Any()).Return(output, nil)
-				_, err := c.DescribeAccessPoint(ctx, accessPointId, util.FileSystemTypeS3Files)
+				_, err := c.DescribeAccessPoint(ctx, accessPointId, fileSystemId, util.FileSystemTypeS3Files)
 				if err == nil {
 					t.Fatalf("DescribeAccessPoint did not fail")
 				}
@@ -1353,7 +1353,7 @@ func TestDescribeAccessPointS3Files(t *testing.T) {
 						Code:    AccessDeniedException,
 						Message: "Access Denied",
 					})
-				_, err := c.DescribeAccessPoint(ctx, accessPointId, util.FileSystemTypeS3Files)
+				_, err := c.DescribeAccessPoint(ctx, accessPointId, fileSystemId, util.FileSystemTypeS3Files)
 				if err == nil {
 					t.Fatalf("DescribeAccessPoint did not fail")
 				}

@@ -294,18 +294,18 @@ func (mr *MockCloudMockRecorder) DeleteAccessPoint(ctx, accessPointId, fsType in
 }
 
 // DescribeAccessPoint mocks base method.
-func (m *MockCloud) DescribeAccessPoint(ctx context.Context, accessPointId string, fsType util.FileSystemType) (*cloud.AccessPoint, error) {
+func (m *MockCloud) DescribeAccessPoint(ctx context.Context, accessPointId string, fileSystemId string, fsType util.FileSystemType) (*cloud.AccessPoint, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DescribeAccessPoint", ctx, accessPointId, fsType)
+	ret := m.ctrl.Call(m, "DescribeAccessPoint", ctx, accessPointId, fileSystemId, fsType)
 	ret0, _ := ret[0].(*cloud.AccessPoint)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // DescribeAccessPoint indicates an expected call of DescribeAccessPoint.
-func (mr *MockCloudMockRecorder) DescribeAccessPoint(ctx, accessPointId, fsType interface{}) *gomock.Call {
+func (mr *MockCloudMockRecorder) DescribeAccessPoint(ctx, accessPointId, fileSystemId, fsType interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeAccessPoint", reflect.TypeOf((*MockCloud)(nil).DescribeAccessPoint), ctx, accessPointId, fsType)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DescribeAccessPoint", reflect.TypeOf((*MockCloud)(nil).DescribeAccessPoint), ctx, accessPointId, fileSystemId, fsType)
 }
 
 // DescribeFileSystem mocks base method.
