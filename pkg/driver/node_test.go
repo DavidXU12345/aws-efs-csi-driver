@@ -23,6 +23,7 @@ import (
 	"os"
 	"os/exec"
 	"reflect"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -109,6 +110,7 @@ func TestNodePublishVolume(t *testing.T) {
 		volMetricsOptIn       bool
 		expectError           errtyp
 		maxInflightMountCalls int64
+		csiNodeMemoryLimit    string
 	}{
 		{
 			name: "success: normal",
@@ -717,6 +719,18 @@ func TestNodePublishVolume(t *testing.T) {
 			mountSuccess:  true,
 		},
 		{
+			name: "success: S3Files with nos3readcache when memory limit is low",
+			req: &csi.NodePublishVolumeRequest{
+				VolumeId:         "s3files:fs-abcd1234::fsap-abcd1234",
+				VolumeCapability: stdVolCap,
+				TargetPath:       targetPath,
+			},
+			csiNodeMemoryLimit: "1073741824",
+			expectMakeDir:      true,
+			mountArgs:          []interface{}{"fs-abcd1234:/", targetPath, "s3files", []string{"accesspoint=fsap-abcd1234", "tls", "nos3readcache"}},
+			mountSuccess:       true,
+		},
+		{
 			name: "fail: S3Files with invalid filesystem ID",
 			req: &csi.NodePublishVolumeRequest{
 				VolumeId:         "s3files:invalid-id",
@@ -809,6 +823,11 @@ func TestNodePublishVolume(t *testing.T) {
 
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
+			if tc.csiNodeMemoryLimit != "" {
+				t.Setenv("CSI_NODE_MEMORY_LIMIT", tc.csiNodeMemoryLimit)
+			} else {
+				t.Setenv("CSI_NODE_MEMORY_LIMIT", strconv.Itoa(minMemoryInBytesToEnableS3ReadCache*2))
+			}
 			mockCtrl := gomock.NewController(t)
 			defer mockCtrl.Finish()
 			mockMounter, driver, ctx := setup(mockCtrl, NewVolStatter(), tc.volMetricsOptIn, tc.maxInflightMountCalls)
@@ -1511,6 +1530,32 @@ func TestIsValidFileSystemId(t *testing.T) {
 			result := isValidFileSystemId(tc.fsid)
 			if result != tc.expected {
 				t.Errorf("isValidFileSystemId(%q) = %v, expected %v", tc.fsid, result, tc.expected)
+			}
+		})
+	}
+}
+
+func TestGetCsiNodeEfsPluginContainerMemoryLimitInBytes(t *testing.T) {
+	testCases := []struct {
+		name     string
+		envValue string
+		expected int64
+	}{
+		{"env not set", "", -1},
+		{"valid value", "1073741824", 1073741824},
+		{"invalid value", "notanumber", -1},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			if tc.envValue != "" {
+				t.Setenv("CSI_NODE_MEMORY_LIMIT", tc.envValue)
+			} else {
+				os.Unsetenv("CSI_NODE_MEMORY_LIMIT")
+			}
+			result := getCsiNodeEfsPluginContainerMemoryLimitInBytes()
+			if result != tc.expected {
+				t.Errorf("Expected %d, got %d", tc.expected, result)
 			}
 		})
 	}

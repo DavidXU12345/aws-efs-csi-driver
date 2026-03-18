@@ -50,7 +50,9 @@ var (
 )
 
 const (
-	maxInflightMountCallsReached = "The number of concurrent mount calls is %v, which has reached the limit"
+	maxInflightMountCallsReached        = "The number of concurrent mount calls is %v, which has reached the limit"
+	GiB                                 = 1024 * 1024 * 1024
+	minMemoryInBytesToEnableS3ReadCache = 30 * GiB
 )
 
 func (d *Driver) NodeStageVolume(ctx context.Context, req *csi.NodeStageVolumeRequest) (*csi.NodeStageVolumeResponse, error) {
@@ -227,6 +229,13 @@ func (d *Driver) NodePublishVolume(ctx context.Context, req *csi.NodePublishVolu
 			if !hasOption(mountOptions, f) {
 				mountOptions = append(mountOptions, f)
 			}
+		}
+	}
+	if fsType == util.FileSystemTypeS3Files {
+		memoryLimitInBytes := getCsiNodeEfsPluginContainerMemoryLimitInBytes()
+		if memoryLimitInBytes < minMemoryInBytesToEnableS3ReadCache {
+			klog.Infof("CSI node memory limit %d bytes is below minimum %d bytes required to enable S3 read cache. Adding nos3readcache into mount option.", memoryLimitInBytes, minMemoryInBytesToEnableS3ReadCache)
+			mountOptions = append(mountOptions, "nos3readcache")
 		}
 	}
 
@@ -663,6 +672,17 @@ func getMaxInflightMountCalls(maxInflightMountCallsOptIn bool, maxInflightMountC
 
 	klog.V(4).Infof("MaxInflightMountCalls is manually set to %d", maxInflightMountCalls)
 	return maxInflightMountCalls
+}
+
+func getCsiNodeEfsPluginContainerMemoryLimitInBytes() int64 {
+	if v := os.Getenv("CSI_NODE_MEMORY_LIMIT"); v != "" {
+		if memLimit, err := strconv.ParseInt(v, 10, 64); err == nil {
+			klog.V(4).Infof("Container memory limit from CSI_NODE_MEMORY_LIMIT: %d bytes", memLimit)
+			return memLimit
+		}
+	}
+	klog.Warning("CSI_NODE_MEMORY_LIMIT is not defined.")
+	return -1
 }
 
 func getVolumeAttachLimit(volumeAttachLimitOptIn bool, volumeAttachLimit int64) int64 {

@@ -97,6 +97,11 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: CSI_NODE_MEMORY_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: efs-plugin
+                  resource: limits.memory
             {{- if .Values.useFIPS }}
             - name: AWS_USE_FIPS_ENDPOINT
               value: "true"

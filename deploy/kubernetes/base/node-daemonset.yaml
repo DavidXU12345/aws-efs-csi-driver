@@ -70,6 +70,11 @@ spec:
               valueFrom:
                 fieldRef:
                   fieldPath: spec.nodeName
+            - name: CSI_NODE_MEMORY_LIMIT
+              valueFrom:
+                resourceFieldRef:
+                  containerName: efs-plugin
+                  resource: limits.memory
             - name: PORT_RANGE_UPPER_BOUND
               value: "21049"
           volumeMounts:
