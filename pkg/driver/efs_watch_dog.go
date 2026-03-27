@@ -42,7 +42,7 @@ const (
 #
 
 [DEFAULT]
-logging_level = INFO
+logging_level = {{if .DebugLogs}}DEBUG{{else}}INFO{{end}}
 logging_max_bytes = 1048576
 logging_file_count = 10
 # mode for /var/run/efs and subdirectories in octal
@@ -57,7 +57,7 @@ region = {{.Region -}}
 {{else -}}
 #region = us-east-1
 {{- end}}
-stunnel_debug_enabled = false
+stunnel_debug_enabled = {{.DebugLogs}}
 #Uncomment the below option to save all stunnel logs for a file system to the same file
 #stunnel_logs_file = /var/log/amazon/efs/{fs_id}.stunnel.log
 stunnel_cafile = /etc/amazon/efs/efs-utils.crt
@@ -164,7 +164,7 @@ retention_in_days = 14
 #
 
 [DEFAULT]
-logging_level = INFO
+logging_level = {{if .DebugLogs}}DEBUG{{else}}INFO{{end}}
 logging_max_bytes = 1048576
 logging_file_count = 10
 # mode for /var/run/efs and subdirectories in octal
@@ -179,7 +179,7 @@ region = {{.Region -}}
 {{else -}}
 #region = us-east-1
 {{- end}}
-stunnel_debug_enabled = false
+stunnel_debug_enabled = {{.DebugLogs}}
 #Uncomment the below option to save all stunnel logs for a file system to the same file
 #stunnel_logs_file = /var/log/amazon/efs/{fs_id}.stunnel.log
 stunnel_cafile = /etc/amazon/efs/efs-utils.crt
@@ -268,7 +268,7 @@ stunnel_cafile = /etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem
 # The watchdog process monitors all mount types and reads its configuration from that file.
 
 [proxy]
-proxy_logging_level = INFO
+proxy_logging_level = {{if .DebugLogs}}DEBUG{{else}}INFO{{end}}
 proxy_logging_max_bytes = 1048576
 proxy_logging_file_count = 10
 
@@ -323,6 +323,8 @@ type execWatchdog struct {
 	efsUtilsCfgPath string
 	// efs-utils static files path
 	efsUtilsStaticFilesPath string
+	// enable debug logging in efs-utils.conf and s3files-utils.conf
+	debugLogs bool
 	// stopCh indicates if it should be stopped
 	stopCh chan struct{}
 
@@ -334,12 +336,14 @@ type utilsConfig struct {
 	Region              string
 	FipsEnabled         string
 	PortRangeUpperBound string
+	DebugLogs           bool
 }
 
-func newExecWatchdog(efsUtilsCfgPath, efsUtilsStaticFilesPath, cmd string, arg ...string) Watchdog {
+func newExecWatchdog(efsUtilsCfgPath, efsUtilsStaticFilesPath string, debugLogs bool, cmd string, arg ...string) Watchdog {
 	return &execWatchdog{
 		efsUtilsCfgPath:         efsUtilsCfgPath,
 		efsUtilsStaticFilesPath: efsUtilsStaticFilesPath,
+		debugLogs:               debugLogs,
 		execCmd:                 cmd,
 		execArg:                 arg,
 		stopCh:                  make(chan struct{}),
@@ -438,7 +442,7 @@ func (w *execWatchdog) updateConfig(efsClientSource string) error {
 	if err != nil || val < 21049 {
 		portRangeUpperBound = "21049"
 	}
-	cfg := utilsConfig{EfsClientSource: efsClientSource, Region: region, FipsEnabled: fipsEnabled, PortRangeUpperBound: portRangeUpperBound}
+	cfg := utilsConfig{EfsClientSource: efsClientSource, Region: region, FipsEnabled: fipsEnabled, PortRangeUpperBound: portRangeUpperBound, DebugLogs: w.debugLogs}
 
 	if err := w.writeConfigFile(efsUtilsConfigFileName, efsUtilsConfigTemplate, cfg); err != nil {
 		return err

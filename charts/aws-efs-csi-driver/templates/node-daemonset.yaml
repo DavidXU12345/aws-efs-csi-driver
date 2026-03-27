@@ -86,6 +86,7 @@ spec:
             - --volume-attach-limit={{ hasKey .Values.node "volumeAttachLimit" | ternary .Values.node.volumeAttachLimit 20 }}
             - --force-unmount-after-timeout={{ hasKey .Values.node "forceUnmountAfterTimeout" | ternary .Values.node.forceUnmountAfterTimeout false }}
             - --unmount-timeout={{ hasKey .Values.node "unmountTimeout" | ternary .Values.node.unmountTimeout "30s" }}
+            - --debug-logs={{ .Values.debugLogs }}
           env:
             - name: CSI_ENDPOINT
               value: unix:/csi/csi.sock

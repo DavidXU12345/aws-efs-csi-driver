@@ -63,6 +63,7 @@ spec:
             - --volume-attach-limit=20
             - --force-unmount-after-timeout=false
             - --unmount-timeout=30s
+            - --debug-logs=false
           env:
             - name: CSI_ENDPOINT
               value: unix:/csi/csi.sock
