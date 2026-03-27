@@ -807,6 +807,7 @@ func (c *cloud) DeleteS3FilesFileSystem(resources *S3FilesResources) error {
 	// Delete the S3 Files file system
 	request := &s3files.DeleteFileSystemInput{
 		FileSystemId: aws.String(resources.FileSystemId),
+		ForceDelete:  aws.Bool(true),
 	}
 	_, err = c.s3filesclient.DeleteFileSystem(ctx, request)
 	if err != nil {
@@ -816,6 +817,14 @@ func (c *cloud) DeleteS3FilesFileSystem(resources *S3FilesResources) error {
 			fmt.Printf("S3Files file system %s not found, continuing with cleanup\n", resources.FileSystemId)
 		default:
 			fmt.Printf("S3Files file system %s failed to be deleted, continuing with cleanup: %v\n", resources.FileSystemId, err)
+		}
+	} else {
+		// Wait for the S3 Files file system to be fully deleted before deleting the bucket
+		err = c.ensureNoS3FilesFileSystem(resources.FileSystemId)
+		if err != nil {
+			fmt.Printf("Warning: failed to confirm S3Files file system %s deletion: %v\n", resources.FileSystemId, err)
+		} else {
+			fmt.Printf("S3Files file system %s is confirmed to be deleted\n", resources.FileSystemId)
 		}
 	}
 
@@ -939,6 +948,38 @@ func (c *cloud) ensureNoS3FilesMountTarget(fileSystemId string) error {
 			return nil
 		}
 		time.Sleep(time.Second)
+	}
+}
+
+func (c *cloud) ensureNoS3FilesFileSystem(fileSystemId string) error {
+	ctx := context.TODO()
+	timeout := time.After(5 * time.Minute)
+
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("timed out waiting for S3Files file system %s to be deleted", fileSystemId)
+		default:
+		}
+
+		request := &s3files.ListFileSystemsInput{}
+		response, err := c.s3filesclient.ListFileSystems(ctx, request)
+		if err != nil {
+			return err
+		}
+
+		found := false
+		for _, fs := range response.FileSystems {
+			if fs.FileSystemId != nil && *fs.FileSystemId == fileSystemId {
+				fmt.Printf("S3Files file system %s status: %s (waiting for deletion)\n", fileSystemId, fs.Status)
+				found = true
+				break
+			}
+		}
+		if !found {
+			return nil
+		}
+		time.Sleep(10 * time.Second)
 	}
 }
 
