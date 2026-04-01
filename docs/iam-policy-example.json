@@ -4,11 +4,11 @@
     {
       "Effect": "Allow",
       "Action": [
-        "elasticfilesystem:ListAccessPoints",
-        "elasticfilesystem:ListFileSystems",
-        "s3files:DescribeAccessPoints",
-        "s3files:DescribeFileSystems",
-        "s3files:DescribeMountTargets",
+        "elasticfilesystem:DescribeAccessPoints",
+        "elasticfilesystem:DescribeFileSystems",
+        "elasticfilesystem:DescribeMountTargets",
+        "s3files:ListAccessPoints",
+        "s3files:ListFileSystems",
         "ec2:DescribeAvailabilityZones"
       ],
       "Resource": "*"
