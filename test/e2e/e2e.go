@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -358,11 +359,11 @@ var _ = ginkgo.Describe("[efs-csi]", func() {
 					framework.ExpectNoError(e2epod.WaitForPodNameRunningInNamespace(context.TODO(), f.ClientSet, pod.Name, f.Namespace.Name), "waiting for pod running")
 				})
 
-		testEncryptInTransit := func(f *framework.Framework, encryptInTransit *bool) {
-			// TODO [RyanStan 4-15-24]
-			// Now that non-tls mounts are re-directed to efs-proxy (efs-utils v2),
-			// we need a new method of determining whether encrypt in transit is correctly working.
-			// One way to do this could be to parse the arguments passed to efs-proxy and look for the '--tls' flag.
+				testEncryptInTransit := func(f *framework.Framework, encryptInTransit *bool) {
+					// TODO [RyanStan 4-15-24]
+					// Now that non-tls mounts are re-directed to efs-proxy (efs-utils v2),
+					// we need a new method of determining whether encrypt in transit is correctly working.
+					// One way to do this could be to parse the arguments passed to efs-proxy and look for the '--tls' flag.
 
 					ginkgo.By("Creating efs pvc & pv")
 					volumeAttributes := map[string]string{}
@@ -470,6 +471,51 @@ var _ = ginkgo.Describe("[efs-csi]", func() {
 					}
 					if output != testData {
 						ginkgo.Fail("Read data does not match write data.")
+					}
+				})
+
+				ginkgo.It("should continue reading/writing after the driver pod is restarted", func() {
+					const FilePath = "/mnt/testfile.txt"
+					const TestDuration = 30 * time.Second
+
+					ginkgo.By("Creating EFS PVC and associated PV")
+					pvc, pv, err := createEFSPVCPV(f.ClientSet, f.Namespace.Name, f.Namespace.Name, "", map[string]string{}, config)
+					framework.ExpectNoError(err)
+					defer f.ClientSet.CoreV1().PersistentVolumes().Delete(context.TODO(), pv.Name, metav1.DeleteOptions{})
+
+					ginkgo.By("Deploying a pod to write data")
+					writeCommand := fmt.Sprintf("while true; do date +%%s >> %s; sleep 1; done", FilePath)
+					pod := e2epod.MakePod(f.Namespace.Name, nil, []*v1.PersistentVolumeClaim{pvc}, admissionapi.LevelBaseline, writeCommand)
+					pod, err = f.ClientSet.CoreV1().Pods(f.Namespace.Name).Create(context.TODO(), pod, metav1.CreateOptions{})
+					framework.ExpectNoError(err)
+					framework.ExpectNoError(e2epod.WaitForPodNameRunningInNamespace(context.TODO(), f.ClientSet, pod.Name, f.Namespace.Name))
+					defer f.ClientSet.CoreV1().Pods(f.Namespace.Name).Delete(context.TODO(), pod.Name, metav1.DeleteOptions{})
+
+					ginkgo.By("Recording timestamp before restart")
+					readCommand := fmt.Sprintf("cat %s", FilePath)
+					content, err := kubectl.RunKubectl(f.Namespace.Name, "exec", pod.Name, "--", "/bin/sh", "-c", readCommand)
+					framework.ExpectNoError(err)
+					lines := strings.Split(strings.TrimSpace(content), "\n")
+					beforeVal, err := strconv.ParseInt(lines[len(lines)-1], 10, 64)
+					framework.ExpectNoError(err)
+
+					ginkgo.By("Triggering a restart for the EFS CSI Node DaemonSet")
+					_, err = kubectl.RunKubectl("kube-system", "rollout", "restart", "daemonset", "efs-csi-node")
+					framework.ExpectNoError(err)
+
+					time.Sleep(TestDuration)
+
+					ginkgo.By("Validating writes resumed after restart")
+					content, err = kubectl.RunKubectl(f.Namespace.Name, "exec", pod.Name, "--", "/bin/sh", "-c", readCommand)
+					framework.ExpectNoError(err)
+					lines = strings.Split(strings.TrimSpace(content), "\n")
+					lastTimestamp, err := strconv.ParseInt(lines[len(lines)-1], 10, 64)
+					framework.ExpectNoError(err)
+
+					expectedMin := beforeVal + int64(TestDuration.Seconds())
+					framework.Logf("beforeVal=%d, lastTimestamp=%d, expectedMin=%d, TestDuration=%v", beforeVal, lastTimestamp, expectedMin, TestDuration)
+					if lastTimestamp < expectedMin {
+						ginkgo.Fail(fmt.Sprintf("Writes did not resume after CSI driver restart. Last write was at %d, but expected a write after %d.", lastTimestamp, expectedMin))
 					}
 				})
 			})
