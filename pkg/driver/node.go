@@ -394,6 +394,10 @@ func (d *Driver) isValidVolumeCapabilities(volCaps []*csi.VolumeCapability) erro
 		return err
 	}
 
+	if err := d.validateMountOptions(volCaps); err != nil {
+		return err
+	}
+
 	return nil
 }
 
@@ -423,6 +427,18 @@ func (d *Driver) validateAccessType(volCaps []*csi.VolumeCapability) error {
 	for _, c := range volCaps {
 		if c.GetMount() == nil {
 			return fmt.Errorf("only filesystem volumes are supported")
+		}
+	}
+	return nil
+}
+
+func (d *Driver) validateMountOptions(volCaps []*csi.VolumeCapability) error {
+	for _, volCap := range volCaps {
+		if mount := volCap.GetMount(); mount != nil {
+			mountOptions := mount.GetMountFlags()
+			if hasOption(mountOptions, "crossaccount") {
+				return fmt.Errorf("mount option 'crossaccount' cannot be set manually. The CSI driver automatically configures this based on Kubernetes secrets. See: https://github.com/kubernetes-sigs/aws-efs-csi-driver/tree/master/examples/kubernetes/efs/cross_account_mount")
+			}
 		}
 	}
 	return nil
