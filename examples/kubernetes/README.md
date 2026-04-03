@@ -1,6 +1,6 @@
 # Examples
 Before following the examples, you need to:
-* Get yourself familiar with how to setup Kubernetes on AWS and how to [create Amazon EFS file system](../../docs/efs-create-filesystem.md) or [create Amazon S3 Files file system](../../docs/s3files-create-filesystem.md).
+* Get yourself familiar with how to setup Kubernetes on AWS and how to [create Amazon EFS file system](../../docs/efs-create-filesystem.md) or [create Amazon S3 file system](../../docs/s3files-create-filesystem.md).
 * When creating Amazon S3 Files or Amazon EFS file system, make sure it is accessible from the Kubernetes cluster. This can be achieved by creating the file system inside the same VPC as the Kubernetes cluster or using VPC peering
 * Install Amazon EFS CSI driver following the [Installation](../../docs/install.md) steps.
 

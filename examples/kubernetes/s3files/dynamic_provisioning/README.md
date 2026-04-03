@@ -9,7 +9,7 @@ This example requires Kubernetes 1.17 or later and a driver version of 1.2.0 or 
 
 1. Create a storage class for Amazon S3 Files.
 
-   1. Retrieve your Amazon S3 Files file system ID. You can find this in the Amazon S3 Files console, or use the following AWS CLI command.
+   1. Retrieve your Amazon S3 file system ID. You can find this in the Amazon S3 Files console, or use the following AWS CLI command.
 
       ```sh
       aws s3files list-file-systems --query "fileSystems[*].fileSystemId" --output text
@@ -134,7 +134,7 @@ This example requires Kubernetes 1.17 or later and a driver version of 1.2.0 or 
    s3files-app       1/1     Running   0          10m   192.168.78.156   ip-192-168-73-191.region-code.compute.internal   <none>           <none>
    ```
 **Note**  
-If a Pod doesn't have an IP address listed, make sure that you added a mount target for the subnet that your node is in \(as described at the end of [Create an Amazon S3 Files file system](#s3files-create-filesystem)\). Otherwise the Pod won't leave `ContainerCreating` status. When an IP address is listed, it may take a few minutes for a Pod to reach the `Running` status.
+If a Pod doesn't have an IP address listed, make sure that you added a mount target for the subnet that your node is in \(as described at the end of [Create an Amazon S3 file system](#s3files-create-filesystem)\). Otherwise the Pod won't leave `ContainerCreating` status. When an IP address is listed, it may take a few minutes for a Pod to reach the `Running` status.
 
 1. Confirm that the data is written to the volume.
 

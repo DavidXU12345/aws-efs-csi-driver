@@ -13,7 +13,7 @@ This example shows how to create a static provisioned Amazon S3 Files persistent
    cd aws-efs-csi-driver/examples/kubernetes/s3files/multiple_pods/
    ```
 
-1. Retrieve your Amazon S3 Files file system ID. You can find this in the Amazon S3 Files console, or use the following AWS CLI command.
+1. Retrieve your Amazon S3 file system ID. You can find this in the Amazon S3 Files console, or use the following AWS CLI command.
 
    ```sh
    aws s3files list-file-systems --query "fileSystems[*].fileSystemId" --output text
@@ -25,7 +25,7 @@ This example shows how to create a static provisioned Amazon S3 Files persistent
    fs-582a03f3
    ```
 
-1. Edit the [`specs/pv.yaml`](./specs/pv.yaml) file and replace the `volumeHandle` value with your Amazon S3 Files file system ID.
+1. Edit the [`specs/pv.yaml`](./specs/pv.yaml) file and replace the `volumeHandle` value with your Amazon S3 file system ID.
 
    ```
    apiVersion: v1
@@ -45,7 +45,7 @@ This example shows how to create a static provisioned Amazon S3 Files persistent
        volumeHandle: s3files:fs-582a03f3
    ```
 **Note**  
-`spec.capacity` is ignored by the Amazon EFS CSI driver because Amazon S3 Files is an elastic file system. The actual storage capacity value in persistent volumes and persistent volume claims isn't used when creating the file system. However, because storage capacity is a required field in Kubernetes, you must specify a valid value, such as, `5Gi` in this example. This value doesn't limit the size of your Amazon S3 Files file system.
+`spec.capacity` is ignored by the Amazon EFS CSI driver because Amazon S3 Files is an elastic file system. The actual storage capacity value in persistent volumes and persistent volume claims isn't used when creating the file system. However, because storage capacity is a required field in Kubernetes, you must specify a valid value, such as, `5Gi` in this example. This value doesn't limit the size of your Amazon S3 file system.
 
 
 
@@ -120,7 +120,7 @@ It may take a few minutes for the Pods to reach the `Running` status.
    Events:                none
    ```
 
-   The Amazon S3 Files file system ID is listed as the `VolumeHandle`.
+   The Amazon S3 file system ID is listed as the `VolumeHandle`.
 
 1. Verify that the `app1` Pod is successfully writing data to the volume.
 

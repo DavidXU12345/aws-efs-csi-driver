@@ -1,13 +1,13 @@
-## Create an Amazon S3 Files file system for Amazon EKS
+## Create an Amazon S3 file system for Amazon EKS
 
-This topic gives example steps for creating an Amazon S3 Files file system for Amazon EKS. You can also refer to [Getting started with Amazon S3 Files](https://docs.aws.amazon.com/s3files/latest/userguide/getting-started.html).
+This topic gives example steps for creating an Amazon S3 file system for Amazon EKS. You can also refer to [Getting started with Amazon S3 Files](https://docs.aws.amazon.com/s3files/latest/userguide/getting-started.html).
 
-The Amazon EFS CSI driver supports [Amazon S3 Files access points](https://docs.aws.amazon.com/s3files/latest/userguide/access-points.html), which are application\-specific entry points into an Amazon S3 Files file system that make it easier to share a file system between multiple Pods. Access points can enforce a user identity for all file system requests that are made through the access point, and enforce a root directory for each Pod. For more information, see [Amazon S3 Files access points](../examples/kubernetes/s3files/access_points/README.md).
+The Amazon EFS CSI driver supports [Amazon S3 Files access points](https://docs.aws.amazon.com/s3files/latest/userguide/access-points.html), which are application\-specific entry points into an Amazon S3 file system that make it easier to share a file system between multiple Pods. Access points can enforce a user identity for all file system requests that are made through the access point, and enforce a root directory for each Pod. For more information, see [Amazon S3 Files access points](../examples/kubernetes/s3files/access_points/README.md).
 
 **Important**  
 You must complete the following steps in the same terminal because variables are set and used across the steps.
 
-**To create an Amazon S3 Files file system for your Amazon EKS cluster**
+**To create an Amazon S3 file system for your Amazon EKS cluster**
 
 1. Retrieve the VPC ID that your cluster is in and store it in a variable for use in a later step. Replace `my-cluster` with your cluster name.
 
@@ -52,7 +52,7 @@ You must complete the following steps in the same terminal because variables are
 **Important**  
 To further restrict access to your file system, you can use the CIDR for your subnet instead of the VPC.
 
-1. Create an Amazon S3 Files file system for your Amazon EKS cluster.
+1. Create an Amazon S3 file system for your Amazon EKS cluster.
 
    1. Create a file system. Replace `region-code` with the AWS Region that your cluster is in. Replace `amzn-s3-demo-bucket` with your S3 bucket name. Replace `s3files-role-arn` with IAM Role ARN for Amazon S3 Files to access your bucket.
 

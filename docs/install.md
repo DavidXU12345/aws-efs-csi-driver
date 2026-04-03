@@ -20,7 +20,7 @@ This feature is activated by default, and cluster administrators should use the 
 + The `kubectl` command line tool is installed on your device or AWS CloudShell. The version can be the same as or up to one minor version earlier or later than the Kubernetes version of your cluster. To install or upgrade `kubectl`, see [Installing or updating `kubectl`](https://kubernetes.io/docs/tasks/tools/#kubectl).
 
 **Note**  
-A Pod running on AWS Fargate automatically mounts an Amazon EFS file system or Amazon S3 Files file system, without needing the manual driver installation steps described on this page.
+A Pod running on AWS Fargate automatically mounts an Amazon EFS file system or Amazon S3 file system, without needing the manual driver installation steps described on this page.
 
 ## Set up driver permission
 The driver requires IAM permission to talk to Amazon EFS or Amazon S3 Files to manage the volume on user's behalf. There are several methods to grant driver IAM permission:
@@ -165,7 +165,7 @@ For some situations, you may not be able to add the necessary IAM permissions to
 
 After deploying the driver, you can continue to these sections:
 * [Create an Amazon EFS file system for Amazon EKS](./efs-create-filesystem.md)
-* [Create an Amazon S3 Files file system for Amazon EKS](./s3files-create-filesystem.md)
+* [Create an Amazon S3 file system for Amazon EKS](./s3files-create-filesystem.md)
 * [Examples](#examples)
 
 -----
@@ -173,7 +173,7 @@ After deploying the driver, you can continue to these sections:
 
 ## Important Notes on EFS CSI Driver v3 Upgrade
 
-Starting with version 3.X.X, the EFS CSI driver adds support for Amazon S3 Files file systems. There are no breaking changes if you are upgrading from latest v2.X.X version.
+Starting with version 3.X.X, the EFS CSI driver adds support for Amazon S3 file systems. There are no breaking changes if you are upgrading from latest v2.X.X version.
 
 ## Important Notes on EFS CSI Driver v2 Upgrade
 
