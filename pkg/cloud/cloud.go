@@ -47,6 +47,7 @@ const (
 	ConflictException        = "ConflictException"
 	PvcNameTagKey            = "pvcName"
 	AccessPointPerFsLimit    = 10000
+	s3FilesListAccessPointsPageSize = 1000
 )
 
 var (
@@ -406,9 +407,10 @@ func (c *cloud) FindAccessPointByClientToken(ctx context.Context, clientToken, f
 
 	switch fsType {
 	case util.FileSystemTypeEFS:
+		// TODO: Use pagniation implementation to reduce the value of MaxResults
 		describeAPInput := &efs.DescribeAccessPointsInput{
 			FileSystemId: &fileSystemId,
-			MaxResults:   aws.Int32(AccessPointPerFsLimit),
+			MaxResults:   aws.Int32(AccessPointPerFsLimit),  // 10000 is the uppper bound for MaxResults on efs DescribeAccessPoints
 		}
 		res, err := c.efs.DescribeAccessPoints(ctx, describeAPInput, func(o *efs.Options) {
 			o.Retryer = c.rm.describeAccessPointsRetryer
@@ -448,9 +450,10 @@ func (c *cloud) FindAccessPointByClientToken(ctx context.Context, clientToken, f
 func (c *cloud) ListAccessPoints(ctx context.Context, fileSystemId string, fsType util.FileSystemType) (accessPoints []*AccessPoint, err error) {
 	switch fsType {
 	case util.FileSystemTypeEFS:
+		// TODO: Use pagniation implementation to reduce the value of MaxResults
 		describeAPInput := &efs.DescribeAccessPointsInput{
 			FileSystemId: &fileSystemId,
-			MaxResults:   aws.Int32(AccessPointPerFsLimit),
+			MaxResults:   aws.Int32(AccessPointPerFsLimit),  // 10000 is the uppper bound for MaxResults on efs DescribeAccessPoints
 		}
 		res, err := c.efs.DescribeAccessPoints(ctx, describeAPInput, func(o *efs.Options) {
 			o.Retryer = c.rm.describeAccessPointsRetryer
@@ -489,7 +492,7 @@ func (c *cloud) ListAccessPoints(ctx context.Context, fileSystemId string, fsTyp
 		for {
 			describeAPInput := &s3files.ListAccessPointsInput{
 				FileSystemId: &fileSystemId,
-				MaxResults:   aws.Int32(AccessPointPerFsLimit),
+				MaxResults:   aws.Int32(s3FilesListAccessPointsPageSize),  // 1000 is upper bound for MaxResults on s3files ListAccessPoints
 				NextToken:    nextToken,
 			}
 			res, err := c.s3files.ListAccessPoints(ctx, describeAPInput, func(o *s3files.Options) {
