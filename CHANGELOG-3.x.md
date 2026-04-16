@@ -11,3 +11,5 @@
 * Upgrade sidecar and go dependencies to fix critical CVEs ([#1847](https://github.com/kubernetes-sigs/aws-efs-csi-driver/pull/1847), [@DavidXU12345](https://github.com/DavidXU12345))
 * Add helm updateStrategy to DaemonSet and strategy to Deployment ([#1846](https://github.com/kubernetes-sigs/aws-efs-csi-driver/pull/1846), [@camaeel](https://github.com/camaeel))
 * Validate mountTargetIp as a valid IP address in NodePublishVolume ([#1844](https://github.com/kubernetes-sigs/aws-efs-csi-driver/pull/1844), [@DavidXU12345](https://github.com/DavidXU12345))
+
+Update
