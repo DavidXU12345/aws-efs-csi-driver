@@ -41,7 +41,15 @@ FROM public.ecr.aws/eks-distro-build-tooling/python:3.11-gcc-al23 as rpm-provide
 # efs-utils.tar.gz to the repo root before building:
 #   cp /path/to/efs-utils.tar.gz ./efs-utils.tar.gz
 #   docker build --build-arg EFSUTILSSOURCE=local .
+#
+# efs-proxy is built with cargo-auditable, which embeds the binary's crate list in
+# a .dep-v0 section. Without it, image scanners (trivy, Inspector) cannot see the
+# Rust dependencies compiled into efs-proxy, so their CVEs go unreported. The
+# section is about 6 KB, is not loaded at runtime, and does not change the code.
+# The build fails if the efs-utils spec has no cargo build line to switch, or if
+# efs-proxy comes out without the section.
 ARG EFSUTILSSOURCE=github
+ARG CARGO_AUDITABLE_VERSION=0.7.7
 COPY efs-utils.tar.gz* /tmp/efs-utils-local/
 RUN mkdir -p /tmp/rpms && \
     if [ "$EFSUTILSSOURCE" != "github" ] && [ "$EFSUTILSSOURCE" != "local" ]; \
@@ -53,10 +61,15 @@ RUN mkdir -p /tmp/rpms && \
          source $HOME/.cargo/env && \
          rustup update && \
          rustup default stable && \
+         cargo install cargo-auditable --locked --version "$CARGO_AUDITABLE_VERSION" && \
          mkdir -p /tmp/efs-utils-src && \
          tar -xzf /tmp/efs-utils-local/efs-utils.tar.gz -C /tmp/efs-utils-src --strip-components=1 && \
          cd /tmp/efs-utils-src && \
-         make rpm-without-system-rust && mv build/amazon-efs-utils*rpm /tmp/rpms && \
+         sed -i 's/^cargo build /cargo auditable build /' amazon-efs-utils.spec && \
+         grep -q '^cargo auditable build ' amazon-efs-utils.spec && \
+         make rpm-without-system-rust && \
+         readelf -S "$(find build -type f -path '*/target/release/efs-proxy' | head -n1)" | grep -q '\.dep-v0' && \
+         mv build/amazon-efs-utils*rpm /tmp/rpms && \
          cd / && rm -rf /tmp/efs-utils-src /tmp/efs-utils-local && \
          yum clean all; \
     else echo "Installing efs-utils from github using the highest release tag" && \
@@ -65,6 +78,7 @@ RUN mkdir -p /tmp/rpms && \
          source $HOME/.cargo/env && \
          rustup update && \
          rustup default stable && \
+         cargo install cargo-auditable --locked --version "$CARGO_AUDITABLE_VERSION" && \
          git clone https://github.com/aws/efs-utils && \
          cd efs-utils && \
          # Take the highest vX.Y.Z tag by version, not by tag date, so a later
@@ -74,7 +88,11 @@ RUN mkdir -p /tmp/rpms && \
          if [ -z "$EFS_UTILS_TAG" ]; then echo "No vX.Y.Z release tag found in aws/efs-utils" && exit 1; fi && \
          echo "Building efs-utils $EFS_UTILS_TAG" && \
          git checkout "$EFS_UTILS_TAG" && \
-         make rpm-without-system-rust && mv build/amazon-efs-utils*rpm /tmp/rpms && \
+         sed -i 's/^cargo build /cargo auditable build /' amazon-efs-utils.spec && \
+         grep -q '^cargo auditable build ' amazon-efs-utils.spec && \
+         make rpm-without-system-rust && \
+         readelf -S "$(find build -type f -path '*/target/release/efs-proxy' | head -n1)" | grep -q '\.dep-v0' && \
+         mv build/amazon-efs-utils*rpm /tmp/rpms && \
          # clean up efs-utils folder after install
          cd .. && rm -rf efs-utils && \
          yum clean all; \
